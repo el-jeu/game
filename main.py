@@ -6,50 +6,59 @@ from levels import *
 
 #fonction qui gère les mouvements du joueur
 def move(speed):
+    points = 0
+    playersDone = []
     x,y = speed #direction du mouvement
-    for i in range(len(levelMap)): #on parcour le niveau
-        for j in range(len(levelMap[i])):
-            #on a trouvé le joueur et le mouvement ne sort pas du niveau
-            if levelMap[i][j][0] == "p" and 0 <= i + x < len(levelMap) and 0 <= j + y < len(levelMap[i]):
+    irange = range(len(levelMap))
+    if x < 0:
+        irange = range(len(levelMap)-1,-1,-1)
+
+    for i in irange: #on parcour le niveau
+
+        jrange = range(len(levelMap[i]))
+        if y < 0:
+            jrange = range(len(levelMap[i])-1,-1,-1)
+        for j in jrange:
+            if levelMap[i][j][0] == "p" and levelMap[i][j] not in playersDone:
+                playersDone.append(levelMap[i][j])
 
                 #la case est une bille on peut y aller et on renvoi 1
-                if levelMap[i+x][j+y][0] == "b":
-                    levelMap[i+x][j+y] = levelMap[i][j]
+                if levelMap[(i+x)%len(levelMap)][(j+y)%len(levelMap[i])][0] == "b":
+                    levelMap[(i+x)%len(levelMap)][(j+y)%len(levelMap[i])] = levelMap[i][j]
                     levelMap[i][j] = "v"
-                    return 1
+                    points = 1
 
                 #la case est vide on peut y aller
-                if levelMap[i+x][j+y] == "v":
-                    levelMap[i+x][j+y] = levelMap[i][j]
+                if levelMap[(i+x)%len(levelMap)][(j+y)%len(levelMap[i])][0] == "v":
+                    levelMap[(i+x)%len(levelMap)][(j+y)%len(levelMap[i])] = levelMap[i][j]
                     levelMap[i][j] = "v"
-                    return 0
+
     #on ne peut pas aller sur la case
-    return 0
+    return points
 
 #fonction qui gere l'ia de l'enemi
 def enemyMove():
-    possibleSpeeds = [(0,1),(0,-1),(0,0),(1,0),(-1,0)]
-    x,y = random.choice(possibleSpeeds)
-    for i in range(len(levelMap)):
-        for j in range(len(levelMap[i])):
-            if levelMap[i][j][0] == "e" and 0 <= i + x < len(levelMap) and 0 <= j + y < len(levelMap[i]):
-                if "b" in levelMap[i+x][j+y][0]:
-                    levelMap[i+x][j+y] = levelMap[i][j]
+    enemiesDone = []
+    irange = range(len(levelMap))
+    if x < 0:
+        irange = range(len(levelMap)-1,-1,-1)
+    for i in irange:
+
+        jrange = range(len(levelMap[i]))
+        if y < 0:
+            jrange = range(len(levelMap[i])-1,-1,-1)
+        for j in jrange:
+            
+            if levelMap[i][j][0] == "e" and levelMap[i][j] not in enemiesDone:
+                enemiesDone.append(levelMap[i][j])
+
+                if levelMap[(i+x)%len(levelMap)][(j+y)%len(levelMap[i])][0] in ["b","v","p"]:
+                    levelMap[(i+x)%len(levelMap)][(j+y)%len(levelMap[i])] = levelMap[i][j]
                     levelMap[i][j] = "v"
-                    return 0
-                if "v" in levelMap[i+x][j+y]:
-                    levelMap[i+x][j+y] = levelMap[i][j]
-                    levelMap[i][j] = "v"
-                    return 0
-                if "p" in levelMap[i+x][j+y]:
-                    levelMap[i+x][j+y] = levelMap[i][j]
-                    levelMap[i][j] = "v"
-                    return 0
-    return 0
 
 #affiche a l'ecran l'image contenue dans path, au coordonées (x,y) et de taille (w,h)
 def renderSprite(window,path, x, y, w, h):
-    sprite = pygame.image.load(path).convert_alpha()
+    sprite = pygame.image.load("assets/"+str(path)+".png").convert_alpha()
     sprite = pygame.transform.scale(sprite, (w, h))
     window.blit(sprite,(x,y))
 
@@ -92,7 +101,7 @@ while running:
     if playing and (countdown <= 0 or pointsLeft == 0) :
         playing = False
         if countdown <= 0:
-            renderSprite(window, "assets/"+str(GAMEOVER)+".png", 0, 0, 100, 100)
+            renderSprite(window, GAMEOVER, 0, 0, 100, 100)
 
     # gestion des evenements
     for event in pygame.event.get():
@@ -115,23 +124,19 @@ while running:
             speed = (-1,0)
         if event.type == USEREVENT+1 and playing:
 
-            countdown -= frameTime / 1000
-
             #le joueur et l'enemi se deplacent
             points += move(speed)
-            if cooldown == maxWaitTime:
-                cooldown = enemyMove()
-            else:
-                cooldown += 1
+            if speed != (0,0):
+                enemyMove()
 
             #on affiche les elements du niveau
-            renderSprite(window, "assets/"+str(FLOOR)+".png", 0, 0, WIDTH * ROWS, HEIGHT * COLUMNS)
+            renderSprite(window, FLOOR, 0, 0, WIDTH * ROWS, HEIGHT * COLUMNS)
 
             pointsLeft = 0
             for x in range(len(levelMap)):
                 for y in range(len(levelMap[x])):
                     if levelMap[x][y][0] != "v":
-                        renderSprite(window, "assets/"+str(levelMap[x][y])+".png", x*WIDTH, y*HEIGHT, WIDTH, HEIGHT)
+                        renderSprite(window, levelMap[x][y][3:], x*WIDTH, y*HEIGHT, WIDTH, HEIGHT)
                     if levelMap[x][y][0] == "b":
                         pointsLeft += 1
 
